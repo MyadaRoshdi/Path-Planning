@@ -7,6 +7,7 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "helpers.h"
 #include "json.hpp"
+#inclue "spline.h"
 
 // for convenience
 using nlohmann::json;
@@ -49,6 +50,11 @@ int main() {
     map_waypoints_dx.push_back(d_x);
     map_waypoints_dy.push_back(d_y);
   }
+    // start in lane 1(middle lane)
+    int lane = 1;
+    
+    // define reference velocity as car target velocity
+    double ref_vel = 49.5; // close to speed limit which is 50-mph
 
   h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,
                &map_waypoints_dx,&map_waypoints_dy]
@@ -80,13 +86,96 @@ int main() {
           // Previous path data given to the Planner
           auto previous_path_x = j[1]["previous_path_x"];
           auto previous_path_y = j[1]["previous_path_y"];
-          // Previous path's end s and d values 
+          // Previous path's end s and d values
           double end_path_s = j[1]["end_path_s"];
           double end_path_d = j[1]["end_path_d"];
 
           // Sensor Fusion Data, a list of all other cars on the same side 
           //   of the road.
           auto sensor_fusion = j[1]["sensor_fusion"];
+            
+          // get previous path data points size
+          int prev_size = previous_path_x.size();
+          
+          // create a list of (x,y) waypoints to spline interpolate them.
+            vector<double> ptsx;
+            vector<double> ptsy;
+          
+          // reference x,y and yaw states
+            double ref_x = car_x;
+            double ref_y = car_y;
+            double ref_yaw = deg2rad(car_yaw);
+            
+         // If previous size is almost empty, this means use current car as starting reference
+            if(prev_size < 2)
+            {
+                // initialize preveous position by creating a point from car current state as  as a previous path points
+                double prev_car_x = car_x - cos(car_yaw);
+                double prev_car_y = car_y - sin(car_yaw);
+                
+                // push those initial 2-points into previous path data points
+                ptsx.push_back(prev_car_x);
+                ptsx.push_back(car_x);
+                
+                ptsy.push_back(prev_car_y);
+                ptsy.push_back(car_y);
+                
+            }
+          // otherwise, use the passed previous points
+            else
+            {
+               // Redefine reference as the last previous point
+                ref_x = previous_path_x[prev_size-1];
+                ref_y = previous_path_y[prev_size-1];
+                
+                // define the previous to reference point
+                double ref_x_prev = previous_path_x[prev_size-2];
+                double ref_y_prev = previous_path_y[prev_size-2];
+                // update angle reference based on the previous 2-points
+                ref_yaw = atan2(ref_y-ref_y_prev, ref_x-ref_x_prev);
+                
+                // now, push those 2-points in previous list
+                ptsx.push_back(ref_x_prev);
+                ptsx.push_back(ref_x);
+                
+                ptsy.push_back(ref_y_prev);
+                ptsy.push_back(ref_y);
+                
+            }
+            
+           // Add 3 more points , where each is 30m spaced using the passed middle laneand map waypoints
+             vector<double> next_wp0 = getXY(car_s+30, (6*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+             vector<double> next_wp1 = getXY(car_s+60, (6*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+             vector<double> next_wp2 = getXY(car_s+90, (6*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+            
+            ptsx.push_back(next_wp0[0]);
+            ptsx.push_back(next_wp1[0]);
+            ptsx.push_back(next_wp2[0]);
+            
+            ptsy.push_back(next_wp0[1]);
+            ptsy.push_back(next_wp1[1]);
+            ptsy.push_back(next_wp2[1]);
+            
+            // do transformation to local car coordinates
+            // To make sure last point in the waypoints is shifted as car coordinates
+            
+            for(int i =0; i<ptsx.size(); i++)
+            {
+                // reference car angle
+                double shift_x = ptsx[i]-ref_x;
+                double shift_y = ptsy[i]-ref_y;
+                
+                ptsx[i] = (shift_x * cos(0-ref_yaw)-shift_y * sin(0-ref_yaw));
+                ptsy[i] = (shift_x * cos(0-ref_yaw)+shift_y * sin(0-ref_yaw));
+
+            }
+            
+            // create spline form ptsx and ptsy
+            tk::spline s;
+            s.set_points(ptsx, ptsy);
+            
+
+
 
           json msgJson;
 
@@ -94,9 +183,19 @@ int main() {
           vector<double> next_y_vals;
 
           /**
-           * TODO: define a path made up of (x,y) points that the car will visit
+           * define a path made up of (x,y) points that the car will visit
            *   sequentially every .02 seconds
            */
+            
+            for (int i = 0; i < previous_path_x.size(); i++)
+            {
+                next_x_vals.push_back(previous_path_x[i]);
+                next_y_vals.push_back(previous_path_y[i]);
+            }
+            
+            
+            msgJson["next_x"] = next_x_vals;
+            msgJson["next_y"] = next_y_vals;
 
 
           msgJson["next_x"] = next_x_vals;
