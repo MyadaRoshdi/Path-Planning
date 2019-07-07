@@ -855,4 +855,16 @@ helpers.h
 /Users/miadaroshdy/Desktop/Udacity/Path-Planning/src/helpers.h
 json.hpp
 /Users/miadaroshdy/Desktop/Udacity/Path-Planning/src/json.hpp
+spline.h
+/Users/miadaroshdy/Desktop/Udacity/Path-Planning/src/spline.h
+
+/Users/miadaroshdy/Desktop/Udacity/Path-Planning/src/spline.h
+cstdio
+-
+cassert
+-
+vector
+-
+algorithm
+-
 
