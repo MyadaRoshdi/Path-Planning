@@ -114,10 +114,103 @@ Please (do your best to) stick to [Google's C++ style guide](https://google.gith
 ### 1. The car is able to drive at least 4.32 miles without incident
 The top right screen of the simulator shows the current/best miles driven without incident. Incidents include exceeding acceleration/jerk/speed, collision, and driving outside of the lanes. Each incident case is also listed below in more detail.
 
+![succeeded trip](https://github.com/MyadaRoshdi/Path-Planning/blob/master/img/done.png)
 
 ### 2. The car drives according to the speed limit.
-### 3. Max Acceleration and Jerk are not Exceeded.
-### 4. Car does not have collisions.
-### 5. The car stays in its lane, except for the time between changing lanes.
-### 6. The car is able to change lanes
+To achieve car doesn't drive faster than the speed limit. Also the car isn't driving much slower than speed limit unless obstructed by traffi, a max speed value is used which is slightly less than the speed limit( 50mph)
 
+```code
+double max_speed = 49.5;
+```
+
+### 3. Max Acceleration and Jerk are not Exceeded.
+The car should not exceed a total acceleration of 10 m/s^2 and a jerk of 10 m/s^3, first using an acceleration step : 
+```code
+double acc = 0.224;
+```
+and use a `ref_vel` value, which starts in the begining of the trip with 0, then updated with increasing or decreasing acceleration steps `acc` based on the car in front. the following conditions handles also if the car is in the middle lane `2` and lane changing.
+```code
+if (too_close) {
+// A car is ahead
+// Decide to shift lanes or slow down
+if (!car_right && lane < 2) {
+// No car to the right AND there is a right lane -> shift right
+					lane++;
+				} else if (!car_left && lane > 0) {
+// No car to the left AND there is a left lane -> shift left
+					lane--;
+				} else {
+// Nowhere to shift -> slow down
+					ref_vel -= acc;
+				}
+			} else {
+if (lane != 1) {
+// Not in the center lane. Check if it is safe to move back
+if ((lane == 2 && !car_left) || (lane == 0 && !car_right)) {
+// Move back to the center lane
+						lane = 1;
+					}
+				}
+if (ref_vel < max_speed) {
+// No car ahead AND we are below the speed limit -> speed limit
+					ref_vel += acc;
+				}
+			}
+```
+### 4. Car does not have collisions.
+To acheive that, a gap distance is defined (value is impirically chosen):
+```code
+int gap = 50; // meters
+// Identify whether the car is ahead, to the left, or to the right
+if (car_lane == lane) {
+// Another car is ahead
+					too_close |= (check_car_s > car_s) && ((check_car_s - car_s) < gap);
+				} else if (car_lane - lane == 1) {
+// Another car is to the right
+					car_right |= ((car_s - gap) < check_car_s) && ((car_s + gap) > check_car_s);
+				} else if (lane - car_lane == 1) {
+// Another car is to the left
+					car_left |= ((car_s - gap) < check_car_s) && ((car_s + gap) > check_car_s);
+				}
+			}
+```
+So after the above block of code, not if the gap is less than 50-m, they consider the car is too close, so an action is to deccelrate and change lanes which is handled in the above point (3.).
+### 5. The car stays in its lane, except for the time between changing lanes.
+The preferences is always, keep the car in the middle lane(i.e. lane 1), so the following condition is used to check if the lane is not currently in middle lane and it's safe to go back to the lane:
+
+```code
+if (lane != 1) {
+// Not in the center lane. Check if it is safe to move back
+if ((lane == 2 && !car_left) || (lane == 0 && !car_right)) {
+// Move back to the center lane
+						lane = 1;
+					}
+				}
+```
+### 6. The car is able to change lanes
+If distance with following are is too close, lane changing logic is implemented as follows:
+```code
+if (too_close) {
+// A car is ahead
+// Decide to shift lanes or slow down
+if (!car_right && lane < 2) {
+// No car to the right AND there is a right lane -> shift right
+					lane++;
+				} else if (!car_left && lane > 0) {
+// No car to the left AND there is a left lane -> shift left
+					lane--;
+				} else {
+// Nowhere to shift -> slow down
+					ref_vel -= acc;
+				}
+			} else {
+if (lane != 1) {
+// Not in the center lane. Check if it is safe to move back
+if ((lane == 2 && !car_left) || (lane == 0 && !car_right)) {
+// Move back to the center lane
+						lane = 1;
+					}
+				}
+```
+## Reflections:
+The implementation here is very specific to the given road structure. To generalize it on different lane structures, lots of work is needed (list of speed limits, list of road structure, road exit, traffic signs, .. etc). Also, method used here is logic programming which can do better if more smart decision is taked involving machine learning for path planning.
