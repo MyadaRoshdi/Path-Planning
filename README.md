@@ -111,5 +111,13 @@ Please (do your best to) stick to [Google's C++ style guide](https://google.gith
 
 ## Project Instructions and Rubric Goals description
 
-### The car is able to drive at least 4.32 miles without incident
+### 1. The car is able to drive at least 4.32 miles without incident
+The top right screen of the simulator shows the current/best miles driven without incident. Incidents include exceeding acceleration/jerk/speed, collision, and driving outside of the lanes. Each incident case is also listed below in more detail.
+
+
+### 2. The car drives according to the speed limit.
+### 3. Max Acceleration and Jerk are not Exceeded.
+### 4. Car does not have collisions.
+### 5. The car stays in its lane, except for the time between changing lanes.
+### 6. The car is able to change lanes
 
