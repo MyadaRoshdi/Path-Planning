@@ -113,7 +113,7 @@ double check_car_s = sensor_fusion[i][5];
 // (What position we will be in in the future)
 // check s values greater than ours and s gap
 				check_car_s += ((double)prev_size*0.02*check_speed);
-int gap = 30; // m
+int gap = 50; // m
 // Identify whether the car is ahead, to the left, or to the right
 if (car_lane == lane) {
 // Another car is ahead
